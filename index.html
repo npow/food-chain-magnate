@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Chain Magnate</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Main Menu -->
+        <div id="main-menu" class="screen active">
+            <div class="menu-container">
+                <h1 class="game-title">Food Chain<br><span>Magnate</span></h1>
+                <p class="subtitle">A Splotter Spellen Digital Adaptation</p>
+                <div class="menu-options">
+                    <div class="player-select">
+                        <label>Number of Players</label>
+                        <div class="player-buttons">
+                            <button class="player-btn" data-count="2">2</button>
+                            <button class="player-btn active" data-count="3">3</button>
+                            <button class="player-btn" data-count="4">4</button>
+                            <button class="player-btn" data-count="5">5</button>
+                        </div>
+                    </div>
+                    <button id="start-game" class="btn-primary">Start Game</button>
+                    <button id="start-intro" class="btn-secondary">Introductory Game</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <!-- Top Bar -->
+            <div id="top-bar">
+                <div id="phase-indicator">
+                    <span id="round-num">Round 1</span>
+                    <span id="phase-name">Phase 1: Restructuring</span>
+                </div>
+                <div id="bank-display">
+                    <span class="bank-icon">🏦</span>
+                    <span id="bank-amount">$150</span>
+                </div>
+                <div id="turn-order-display"></div>
+            </div>
+
+            <!-- Main Game Area -->
+            <div id="game-area">
+                <!-- Left Panel: Player Info -->
+                <div id="left-panel">
+                    <div id="player-info-panel"></div>
+                    <div id="employee-market" class="panel">
+                        <h3>Employee Market</h3>
+                        <div id="employee-cards"></div>
+                    </div>
+                </div>
+
+                <!-- Center: Game Board -->
+                <div id="board-container">
+                    <canvas id="game-board"></canvas>
+                    <div id="board-overlay"></div>
+                </div>
+
+                <!-- Right Panel: Actions -->
+                <div id="right-panel">
+                    <div id="action-panel" class="panel">
+                        <h3>Actions</h3>
+                        <div id="action-content"></div>
+                    </div>
+                    <div id="org-chart-panel" class="panel">
+                        <h3>Organization Chart</h3>
+                        <div id="org-chart"></div>
+                    </div>
+                    <div id="milestones-panel" class="panel">
+                        <h3>Milestones</h3>
+                        <div id="milestones-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Bar: Current Player Hand -->
+            <div id="bottom-bar">
+                <div id="hand-label">Your Hand</div>
+                <div id="hand-cards"></div>
+                <div id="beach-area">
+                    <div id="beach-label">Beach</div>
+                    <div id="beach-cards"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Overlay -->
+        <div id="modal-overlay" class="hidden">
+            <div id="modal-content"></div>
+        </div>
+
+        <!-- Log -->
+        <div id="game-log" class="collapsed">
+            <div id="log-toggle">Game Log ▲</div>
+            <div id="log-entries"></div>
+        </div>
+    </div>
+
+    <script src="constants.js"></script>
+    <script src="map.js"></script>
+    <script src="engine.js"></script>
+    <script src="renderer.js"></script>
+    <script src="ui.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
