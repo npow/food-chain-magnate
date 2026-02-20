@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Food Chain Magnate</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -37,12 +39,20 @@
                 <div id="phase-indicator">
                     <span id="round-num">Round 1</span>
                     <span id="phase-name">Phase 1: Restructuring</span>
+                    <span id="phase-description"></span>
                 </div>
                 <div id="bank-display">
                     <span class="bank-icon">🏦</span>
                     <span id="bank-amount">$150</span>
                 </div>
                 <div id="turn-order-display"></div>
+            </div>
+
+            <!-- Current Player Banner -->
+            <div id="current-player-banner" class="hidden">
+                <span id="cpb-icon"></span>
+                <span id="cpb-name">Player Name</span>
+                <span id="cpb-phase-action">is building their org chart...</span>
             </div>
 
             <!-- Main Game Area -->
@@ -90,14 +100,17 @@
             </div>
         </div>
 
+        <!-- Phase Transition Overlay -->
+        <div id="phase-overlay"></div>
+
         <!-- Modal Overlay -->
         <div id="modal-overlay" class="hidden">
             <div id="modal-content"></div>
         </div>
 
         <!-- Log -->
-        <div id="game-log" class="collapsed">
-            <div id="log-toggle">Game Log ▲</div>
+        <div id="game-log" class="expanded">
+            <div id="log-toggle">Game Log ▼</div>
             <div id="log-entries"></div>
         </div>
     </div>

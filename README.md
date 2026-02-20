@@ -1,6 +1,8 @@
 # Food Chain Magnate — Digital Edition
 
-A browser-based digital adaptation of the board game *Food Chain Magnate* by Splotter Spellen.
+A browser-based digital adaptation of the board game *Food Chain Magnate* by Splotter Spellen, featuring a warm 1950s retro diner aesthetic.
+
+![Game Board](screenshots/gameplay.png)
 
 ## How to Play
 
@@ -18,6 +20,14 @@ No build step required — pure HTML, CSS, and JavaScript.
 - **Procedurally generated maps** from 20 tile templates with road connectivity
 - **Full economic loop** — production, marketing, demand, sales, salaries
 - **Introductory variant** for learning the game (no milestones, simplified bank)
+- **Retro diner theme** — warm cream/red/teal palette with Fredoka display font
+- **Clear gameplay flow** — current player banner, phase descriptions, transition overlays, progress bars
+
+## Screenshots
+
+| Menu | Working Phase |
+|------|--------------|
+| ![Menu](screenshots/menu.png) | ![Working](screenshots/working.png) |
 
 ## Game Overview
 
@@ -50,14 +60,15 @@ Players build fast-food empires on a shared city map by hiring staff, producing 
 ## Project Structure
 
 ```
-index.html      — Single-page app shell
-style.css       — Dark-themed UI styling
-constants.js    — Employee definitions, milestones, game constants
+index.html      — Single-page app shell with Google Fonts
+style.css       — 1950s retro diner theme (cream/red/teal palette)
+constants.js    — Employee definitions, milestones, phase descriptions
 map.js          — Procedural map generation and pathfinding
 engine.js       — Game state machine and rules engine
-renderer.js     — Canvas-based board renderer
-ui.js           — Interactive UI controller
+renderer.js     — Canvas board renderer (48px cells, warm visuals)
+ui.js           — Interactive UI with phase overlays and progress tracking
 main.js         — Entry point, menu, and board interaction
+screenshots/    — Game screenshots
 ```
 
 ## Credits

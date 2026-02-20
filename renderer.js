@@ -4,7 +4,7 @@ class BoardRenderer {
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.cellSize = 40;
+        this.cellSize = 48;
         this.offsetX = 0;
         this.offsetY = 0;
         this.hoveredCell = null;
@@ -28,13 +28,14 @@ class BoardRenderer {
 
         this.resize(map);
 
-        // Clear
-        ctx.fillStyle = '#1a2332';
+        // Clear — warm parchment
+        ctx.fillStyle = '#e0d4b8';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw tile borders
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-        ctx.lineWidth = 1;
+        // Draw tile borders — warm brown dashed
+        ctx.strokeStyle = 'rgba(139, 119, 90, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
         for (let tr = 0; tr <= map.tileRows; tr++) {
             ctx.beginPath();
             ctx.moveTo(0, tr * TILE_SIZE * cs);
@@ -47,6 +48,7 @@ class BoardRenderer {
             ctx.lineTo(tc * TILE_SIZE * cs, map.rows * cs);
             ctx.stroke();
         }
+        ctx.setLineDash([]);
 
         // Draw cells
         for (let r = 0; r < map.rows; r++) {
@@ -67,21 +69,21 @@ class BoardRenderer {
 
         // Draw highlights
         for (const hl of this.highlights) {
-            ctx.strokeStyle = hl.color || 'rgba(233, 69, 96, 0.8)';
+            ctx.strokeStyle = hl.color || 'rgba(196, 30, 58, 0.8)';
             ctx.lineWidth = 2;
             ctx.strokeRect(hl.col * cs + 1, hl.row * cs + 1, cs - 2, cs - 2);
         }
 
         // Draw hovered cell
         if (this.hoveredCell) {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.strokeStyle = 'rgba(44, 24, 16, 0.4)';
             ctx.lineWidth = 2;
             ctx.strokeRect(this.hoveredCell.col * cs + 1, this.hoveredCell.row * cs + 1, cs - 2, cs - 2);
         }
 
         // Draw selected cell
         if (this.selectedCell) {
-            ctx.strokeStyle = '#f4a261';
+            ctx.strokeStyle = '#d4940a';
             ctx.lineWidth = 3;
             ctx.strokeRect(this.selectedCell.col * cs, this.selectedCell.row * cs, cs, cs);
         }
@@ -95,34 +97,48 @@ class BoardRenderer {
 
         switch (cell) {
             case CELL.EMPTY:
-                // Grass
-                ctx.fillStyle = '#2d5a27';
+                // Bright warm grass
+                ctx.fillStyle = '#8cb860';
                 ctx.fillRect(x, y, cs, cs);
-                // Subtle grass texture
-                ctx.fillStyle = '#326128';
-                if ((r + c) % 3 === 0) ctx.fillRect(x + 8, y + 8, 4, 4);
-                if ((r + c) % 5 === 1) ctx.fillRect(x + 24, y + 20, 3, 3);
+                // Varied grass texture dots
+                const grassColors = ['#7aa850', '#96c468', '#82b058'];
+                for (let i = 0; i < 5; i++) {
+                    const gx = x + ((r * 7 + c * 13 + i * 17) % (cs - 4)) + 2;
+                    const gy = y + ((r * 11 + c * 3 + i * 23) % (cs - 4)) + 2;
+                    ctx.fillStyle = grassColors[(r + c + i) % 3];
+                    ctx.fillRect(gx, gy, 2, 2);
+                }
                 break;
 
             case CELL.ROAD:
-                ctx.fillStyle = '#4a4a5a';
+                // Warm asphalt
+                ctx.fillStyle = '#a0978a';
                 ctx.fillRect(x, y, cs, cs);
-                // Road markings
-                ctx.fillStyle = '#5a5a6a';
+                ctx.fillStyle = '#b0a89a';
                 ctx.fillRect(x + 1, y + 1, cs - 2, cs - 2);
-                // Center line
-                ctx.fillStyle = '#6a6a7a';
+
+                // Yellow center dashes (classic US lane markings)
+                ctx.strokeStyle = '#d4c040';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
                 if (this.hasAdjacentRoad(map, r, c, 0, 1) || this.hasAdjacentRoad(map, r, c, 0, -1)) {
-                    ctx.fillRect(x + cs/2 - 1, y + 2, 2, cs - 4);
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs / 2, y + 3);
+                    ctx.lineTo(x + cs / 2, y + cs - 3);
+                    ctx.stroke();
                 }
                 if (this.hasAdjacentRoad(map, r, c, 1, 0) || this.hasAdjacentRoad(map, r, c, -1, 0)) {
-                    ctx.fillRect(x + 2, y + cs/2 - 1, cs - 4, 2);
+                    ctx.beginPath();
+                    ctx.moveTo(x + 3, y + cs / 2);
+                    ctx.lineTo(x + cs - 3, y + cs / 2);
+                    ctx.stroke();
                 }
+                ctx.setLineDash([]);
                 break;
 
             case CELL.HOUSE: {
                 // Grass background
-                ctx.fillStyle = '#2d5a27';
+                ctx.fillStyle = '#8cb860';
                 ctx.fillRect(x, y, cs, cs);
 
                 const house = map.houses.find(h => h.row === r && h.col === c);
@@ -136,7 +152,7 @@ class BoardRenderer {
             case CELL.DRINK_LEMON:
             case CELL.DRINK_SODA: {
                 // Grass background
-                ctx.fillStyle = '#2d5a27';
+                ctx.fillStyle = '#8cb860';
                 ctx.fillRect(x, y, cs, cs);
                 this.drawDrinkSource(ctx, x, y, cs, cell);
                 break;
@@ -147,7 +163,7 @@ class BoardRenderer {
                 if (cell >= 100) {
                     const playerIdx = cell - 100;
                     ctx.fillStyle = PLAYER_COLORS[playerIdx];
-                    ctx.globalAlpha = 0.3;
+                    ctx.globalAlpha = 0.2;
                     ctx.fillRect(x, y, cs, cs);
                     ctx.globalAlpha = 1;
                 }
@@ -155,7 +171,7 @@ class BoardRenderer {
         }
 
         // Grid line
-        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.08)';
         ctx.lineWidth = 0.5;
         ctx.strokeRect(x, y, cs, cs);
     }
@@ -168,99 +184,140 @@ class BoardRenderer {
     }
 
     drawHouse(ctx, x, y, cs, house) {
-        // House body
-        const hw = cs * 0.7;
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        const hw = cs * 0.75;
         const hh = cs * 0.55;
         const hx = x + (cs - hw) / 2;
-        const hy = y + cs - hh - 2;
+        const hy = y + cs - hh - 3;
+        ctx.fillRect(hx + 2, hy + 2, hw, hh);
 
-        // Wall
-        ctx.fillStyle = '#e8d4b8';
+        // House body — cream walls
+        ctx.fillStyle = '#f5e6c8';
         ctx.fillRect(hx, hy, hw, hh);
 
-        // Roof
-        ctx.fillStyle = '#c44536';
+        // Roof — red
+        ctx.fillStyle = '#b83028';
         ctx.beginPath();
-        ctx.moveTo(hx - 2, hy);
-        ctx.lineTo(hx + hw / 2, hy - 10);
-        ctx.lineTo(hx + hw + 2, hy);
+        ctx.moveTo(hx - 3, hy);
+        ctx.lineTo(hx + hw / 2, hy - 12);
+        ctx.lineTo(hx + hw + 3, hy);
         ctx.closePath();
         ctx.fill();
 
-        // Door
-        ctx.fillStyle = '#6d4c41';
-        ctx.fillRect(hx + hw/2 - 3, hy + hh - 10, 6, 10);
+        // Door — brown
+        ctx.fillStyle = '#6d4530';
+        const doorW = 5;
+        const doorH = hh * 0.45;
+        ctx.fillRect(hx + hw / 2 - doorW / 2, hy + hh - doorH, doorW, doorH);
 
-        // Window
-        ctx.fillStyle = '#a8dadc';
-        ctx.fillRect(hx + 4, hy + 4, 6, 6);
-        ctx.fillRect(hx + hw - 10, hy + 4, 6, 6);
+        // Windows — blue with pane lines
+        ctx.fillStyle = '#7ec8d8';
+        const winSize = 7;
+        // Left window
+        ctx.fillRect(hx + 4, hy + 5, winSize, winSize);
+        // Right window
+        ctx.fillRect(hx + hw - winSize - 4, hy + 5, winSize, winSize);
+        // Window panes
+        ctx.strokeStyle = '#5a9aa8';
+        ctx.lineWidth = 0.5;
+        // Left panes
+        ctx.beginPath();
+        ctx.moveTo(hx + 4 + winSize / 2, hy + 5);
+        ctx.lineTo(hx + 4 + winSize / 2, hy + 5 + winSize);
+        ctx.moveTo(hx + 4, hy + 5 + winSize / 2);
+        ctx.lineTo(hx + 4 + winSize, hy + 5 + winSize / 2);
+        ctx.stroke();
+        // Right panes
+        ctx.beginPath();
+        ctx.moveTo(hx + hw - winSize / 2 - 4, hy + 5);
+        ctx.lineTo(hx + hw - winSize / 2 - 4, hy + 5 + winSize);
+        ctx.moveTo(hx + hw - winSize - 4, hy + 5 + winSize / 2);
+        ctx.lineTo(hx + hw - 4, hy + 5 + winSize / 2);
+        ctx.stroke();
 
-        // House number
+        // House number badge — red circle at top
+        ctx.fillStyle = '#c41e3a';
+        ctx.beginPath();
+        ctx.arc(x + cs / 2, y + 8, 7, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 9px sans-serif';
+        ctx.font = 'bold 8px Inter, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(house.number, x + cs/2, y + 10);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(house.number, x + cs / 2, y + 8);
 
-        // Garden indicator
+        // Garden indicator — green bar with yellow flower dots
         if (house.garden) {
-            ctx.fillStyle = '#43a047';
-            ctx.fillRect(x + 2, y + cs - 5, cs - 4, 3);
+            ctx.fillStyle = '#5a9848';
+            ctx.fillRect(x + 2, y + cs - 5, cs - 4, 4);
+            // Flower dots
+            ctx.fillStyle = '#e8d040';
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(x + 6 + i * 10, y + cs - 4, 2, 2);
+            }
         }
 
-        // Demand tokens
+        // Demand tokens — larger with initial letters
         if (house.demand.length > 0) {
-            const tokenSize = 7;
+            const tokenSize = 9;
             const startX = x + 2;
-            const startY = y + 2;
+            const startY = y + 17;
             house.demand.forEach((d, i) => {
-                const tx = startX + (i % 3) * (tokenSize + 1);
-                const ty = startY + Math.floor(i / 3) * (tokenSize + 1);
+                const tx = startX + (i % 3) * (tokenSize + 2);
+                const ty = startY + Math.floor(i / 3) * (tokenSize + 2);
                 ctx.fillStyle = this.getDemandColor(d);
                 ctx.beginPath();
-                ctx.arc(tx + tokenSize/2, ty + tokenSize/2, tokenSize/2, 0, Math.PI * 2);
+                ctx.arc(tx + tokenSize / 2, ty + tokenSize / 2, tokenSize / 2, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
+                // Initial letter
+                ctx.fillStyle = d === 'soda' ? '#fff' : '#2c1810';
+                ctx.font = 'bold 6px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const initials = { burger: 'B', pizza: 'P', beer: 'B', lemonade: 'L', soda: 'S' };
+                ctx.fillText(initials[d] || '?', tx + tokenSize / 2, ty + tokenSize / 2);
             });
         }
     }
 
     getDemandColor(type) {
         const colors = {
-            burger: '#e76f51',
-            pizza: '#f4a261',
-            beer: '#e9c46a',
-            lemonade: '#a8dadc',
-            soda: '#264653'
+            burger: '#d45a3a',
+            pizza: '#e8a030',
+            beer: '#c4a840',
+            lemonade: '#6ab8a0',
+            soda: '#3a6070'
         };
         return colors[type] || '#888';
     }
 
     drawDrinkSource(ctx, x, y, cs, cellType) {
-        const colors = {
-            [CELL.DRINK_BEER]: { fill: '#e9c46a', icon: '🍺', label: 'B' },
-            [CELL.DRINK_LEMON]: { fill: '#a8dadc', icon: '🍋', label: 'L' },
-            [CELL.DRINK_SODA]: { fill: '#457b9d', icon: '🥤', label: 'S' }
-        };
-        const info = colors[cellType];
+        const info = {
+            [CELL.DRINK_BEER]: { fill: '#c4a840', label: 'BEER' },
+            [CELL.DRINK_LEMON]: { fill: '#6ab8a0', label: 'LEM' },
+            [CELL.DRINK_SODA]: { fill: '#3a6e8c', label: 'SODA' }
+        }[cellType];
 
-        // Circle background
+        // Larger circle
+        const radius = cs / 2 - 3;
         ctx.fillStyle = info.fill;
         ctx.beginPath();
-        ctx.arc(x + cs/2, y + cs/2, cs/2 - 4, 0, Math.PI * 2);
+        ctx.arc(x + cs / 2, y + cs / 2, radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Label
-        ctx.fillStyle = '#1a1a2e';
-        ctx.font = 'bold 14px sans-serif';
+        // Full label
+        ctx.fillStyle = cellType === CELL.DRINK_SODA ? '#fff' : '#2c1810';
+        ctx.font = 'bold 11px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(info.label, x + cs/2, y + cs/2);
+        ctx.fillText(info.label, x + cs / 2, y + cs / 2);
     }
 
     drawRestaurant(ctx, rest, state) {
@@ -271,75 +328,109 @@ class BoardRenderer {
         const h = 2 * cs;
         const color = PLAYER_COLORS[rest.owner];
 
-        // Building
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.85;
-        ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
-        ctx.globalAlpha = 1;
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillRect(x + 4, y + 4, w - 4, h - 4);
 
-        // Border
+        // Cream building body
+        ctx.fillStyle = '#f5ece0';
+        ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+
+        // Striped awning at top
+        const awningH = 12;
+        for (let i = 0; i < 8; i++) {
+            ctx.fillStyle = i % 2 === 0 ? color : '#fff';
+            ctx.fillRect(x + 2 + i * ((w - 4) / 8), y + 2, (w - 4) / 8, awningH);
+        }
+
+        // Player-colored border
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
 
-        // Name
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 10px sans-serif';
+        // Name plate
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.15;
+        ctx.fillRect(x + 6, y + awningH + 6, w - 12, 16);
+        ctx.globalAlpha = 1;
+
+        // Name text
+        ctx.fillStyle = color;
+        ctx.font = 'bold 11px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(state.players[rest.owner].name.split(' ')[0], x + w/2, y + h/2 - 6);
+        ctx.fillText(state.players[rest.owner].name.split(' ')[0], x + w / 2, y + awningH + 14);
 
-        // Status
-        ctx.font = '8px sans-serif';
-        ctx.fillText(rest.open ? 'WELCOME' : 'COMING SOON', x + w/2, y + h/2 + 6);
+        // Status text
+        if (rest.open) {
+            ctx.fillStyle = '#2a7a5a';
+            ctx.font = 'bold 9px Inter, sans-serif';
+            ctx.fillText('OPEN', x + w / 2, y + awningH + 30);
+        } else {
+            ctx.fillStyle = '#c41e3a';
+            ctx.font = 'bold 8px Inter, sans-serif';
+            ctx.fillText('COMING SOON', x + w / 2, y + awningH + 30);
+        }
 
-        // Entrance marker
+        // Entrance marker — colored circle with "E"
         const ex = rest.entrance.col * cs;
         const ey = rest.entrance.row * cs;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(ex + cs/2, ey + cs/2, 4, 0, Math.PI * 2);
-        ctx.fill();
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(ex + cs/2, ey + cs/2, 2, 0, Math.PI * 2);
+        ctx.arc(ex + cs / 2, ey + cs / 2, 7, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 8px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('E', ex + cs / 2, ey + cs / 2);
     }
 
     drawCampaign(ctx, camp, state) {
         const cs = this.cellSize;
         const x = camp.col * cs;
         const y = camp.row * cs;
+        const color = PLAYER_COLORS[camp.owner];
 
-        // Campaign marker
-        const typeColors = {
-            billboard: '#e9c46a',
-            mailbox: '#2a9d8f',
-            airplane: '#457b9d',
-            radio: '#9b5de5'
-        };
+        // Billboard post
+        ctx.fillStyle = '#6d5a40';
+        ctx.fillRect(x + cs / 2 - 2, y + cs - 8, 4, 8);
 
-        ctx.fillStyle = typeColors[camp.type] || '#888';
-        ctx.globalAlpha = 0.8;
-        ctx.fillRect(x + 4, y + 4, cs - 8, cs - 8);
-        ctx.globalAlpha = 1;
+        // Billboard rectangle
+        ctx.fillStyle = '#f5ece0';
+        ctx.fillRect(x + 4, y + 4, cs - 8, cs - 14);
+        ctx.strokeStyle = color || '#888';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 4, y + 4, cs - 8, cs - 14);
 
-        // Icon
-        const icons = { billboard: 'BB', mailbox: 'MX', airplane: 'AP', radio: 'RD' };
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 8px sans-serif';
+        // Type abbreviation
+        const abbrevs = { billboard: 'BB', mailbox: 'MX', airplane: 'AP', radio: 'RD' };
+        ctx.fillStyle = '#2c1810';
+        ctx.font = 'bold 9px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(icons[camp.type], x + cs/2, y + cs/2 - 4);
+        ctx.fillText(abbrevs[camp.type] || '??', x + cs / 2, y + cs / 2 - 5);
 
-        // Duration
-        ctx.fillText(`${camp.duration}`, x + cs/2, y + cs/2 + 6);
+        // Duration dots
+        const dotY = y + cs / 2 + 4;
+        for (let i = 0; i < camp.duration; i++) {
+            ctx.fillStyle = color || '#888';
+            ctx.beginPath();
+            ctx.arc(x + cs / 2 - (camp.duration - 1) * 4 + i * 8, dotY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Product indicator
         ctx.fillStyle = this.getDemandColor(camp.product);
         ctx.beginPath();
-        ctx.arc(x + cs - 6, y + 6, 3, 0, Math.PI * 2);
+        ctx.arc(x + cs - 7, y + 7, 4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
     }
 
     setHighlights(highlights) {

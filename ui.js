@@ -8,13 +8,16 @@ class UIController {
         this._campaignProduct = null;
         this._campaignDuration = 1;
         this._recruitsRemaining = 0;
+        this._lastPhase = null;
     }
 
     updateAll() {
         const state = this.engine.getState();
         if (!state) return;
 
+        this.showPhaseTransition(state);
         this.updateTopBar(state);
+        this.updateCurrentPlayerBanner(state);
         this.updatePlayerPanel(state);
         this.updateActionPanel(state);
         this.updateOrgChart(state);
@@ -25,10 +28,71 @@ class UIController {
         this.updateLog(state);
     }
 
+    // ===== PHASE TRANSITION OVERLAY =====
+    showPhaseTransition(state) {
+        if (this._lastPhase === null) {
+            this._lastPhase = state.phase;
+            return;
+        }
+        if (state.phase === this._lastPhase) return;
+
+        this._lastPhase = state.phase;
+        const overlay = document.getElementById('phase-overlay');
+        const phaseName = PHASE_NAMES[state.phase] || state.phase;
+        const phaseDesc = PHASE_DESCRIPTIONS[state.phase] || '';
+
+        overlay.innerHTML = `
+            <div class="phase-overlay-title">${phaseName}</div>
+            <div class="phase-overlay-desc">${phaseDesc}</div>
+        `;
+        overlay.classList.add('show');
+
+        setTimeout(() => {
+            overlay.classList.remove('show');
+        }, 1500);
+    }
+
+    // ===== CURRENT PLAYER BANNER =====
+    updateCurrentPlayerBanner(state) {
+        const banner = document.getElementById('current-player-banner');
+        const icon = document.getElementById('cpb-icon');
+        const name = document.getElementById('cpb-name');
+        const action = document.getElementById('cpb-phase-action');
+
+        // Hide during auto-processing phases and game over
+        const autoPhases = [PHASES.DINNERTIME, PHASES.PAYDAY, PHASES.MARKETING_CAMPAIGNS, PHASES.CLEANUP, PHASES.ORDER_OF_BUSINESS, PHASES.GAME_OVER];
+        if (autoPhases.includes(state.phase)) {
+            banner.classList.add('hidden');
+            return;
+        }
+
+        const player = state.players[state.currentPlayerIndex];
+        if (!player) {
+            banner.classList.add('hidden');
+            return;
+        }
+
+        banner.classList.remove('hidden');
+        banner.style.borderLeftColor = player.color;
+        icon.textContent = '\u25B6';
+        name.textContent = player.name;
+        name.style.color = player.color;
+
+        // Phase-specific action text
+        const actionTexts = {
+            [PHASES.SETUP_PLACE_RESTAURANT]: 'is placing a restaurant...',
+            [PHASES.SETUP_RESERVE_CARD]: 'is choosing a reserve card...',
+            [PHASES.RESTRUCTURING]: 'is building their org chart...',
+            [PHASES.WORKING]: 'is working...',
+        };
+        action.textContent = actionTexts[state.phase] || '';
+    }
+
     // ===== TOP BAR =====
     updateTopBar(state) {
         document.getElementById('round-num').textContent = `Round ${state.round || 0}`;
         document.getElementById('phase-name').textContent = PHASE_NAMES[state.phase] || state.phase;
+        document.getElementById('phase-description').textContent = PHASE_DESCRIPTIONS[state.phase] || '';
         document.getElementById('bank-amount').textContent = `$${state.bank}`;
 
         const tod = document.getElementById('turn-order-display');
@@ -69,7 +133,6 @@ class UIController {
                 </div>
             `;
             card.onclick = () => {
-                // Show this player's details
                 this.showPlayerDetail(state, player);
             };
             panel.appendChild(card);
@@ -127,16 +190,16 @@ class UIController {
                 this.showWorkingActions(content, state);
                 break;
             case PHASES.DINNERTIME:
-                content.innerHTML = '<p class="text-dim" style="font-size:0.85rem">Processing sales...</p>';
+                this.showAutoPhase(content, state, 'Dinnertime', 'Serving houses in order. Cheapest price wins each house.');
                 break;
             case PHASES.PAYDAY:
-                content.innerHTML = '<p class="text-dim" style="font-size:0.85rem">Paying salaries...</p>';
+                this.showAutoPhase(content, state, 'Payday', 'Paying salaries to all trained employees.');
                 break;
             case PHASES.MARKETING_CAMPAIGNS:
-                content.innerHTML = '<p class="text-dim" style="font-size:0.85rem">Running campaigns...</p>';
+                this.showAutoPhase(content, state, 'Marketing', 'Active campaigns are placing demand tokens on nearby houses.');
                 break;
             case PHASES.CLEANUP:
-                content.innerHTML = '<p class="text-dim" style="font-size:0.85rem">Cleaning up...</p>';
+                this.showAutoPhase(content, state, 'Cleanup', 'Discarding unsold food, ticking campaign timers, checking bank reserve.');
                 break;
             case PHASES.GAME_OVER:
                 this.showGameOver(content, state);
@@ -144,15 +207,24 @@ class UIController {
         }
     }
 
+    showAutoPhase(content, state, title, description) {
+        content.innerHTML = `
+            <div class="action-header" style="border-left-color: var(--gold);">
+                <div class="action-header-title">${title}</div>
+                <div class="action-header-desc">${description}</div>
+            </div>
+            <p class="text-dim" style="font-size:0.8rem; margin-top:8px;">Processing automatically...</p>
+        `;
+    }
+
     showRestaurantPlacement(content, state) {
         const player = state.players[state.currentPlayerIndex];
         content.innerHTML = `
-            <p style="color:${player.color}" class="fw-bold">${player.name}'s Turn</p>
-            <p class="text-dim" style="font-size:0.8rem;margin:6px 0">
-                Click a highlighted area on the board to place your restaurant (2x2).
-                The entrance must be adjacent to a road.
-            </p>
-            <p class="text-dim" style="font-size:0.75rem">
+            <div class="action-header" style="border-left-color: ${player.color};">
+                <div class="action-header-title">${player.name}'s Turn</div>
+                <div class="action-header-desc">Click a highlighted area on the board to place your first restaurant (2x2). The entrance must be adjacent to a road.</div>
+            </div>
+            <p class="text-dim" style="font-size:0.75rem; margin-top: 6px;">
                 Restaurants placed: ${state.map.restaurants.length}/${state.playerCount}
             </p>
         `;
@@ -161,7 +233,6 @@ class UIController {
         const positions = MapGenerator.getValidRestaurantPositions(state.map, state.map.restaurants, true);
         const highlights = [];
         for (const pos of positions) {
-            // Only show positions with valid entrances (not on same tile)
             const validEntrances = pos.entrances.filter(ent => {
                 const tile = MapGenerator.getTileIndex(ent.row, ent.col);
                 return !state.map.restaurants.some(r => {
@@ -176,7 +247,7 @@ class UIController {
                     highlights.push({
                         row: pos.row + dr,
                         col: pos.col + dc,
-                        color: 'rgba(42, 157, 143, 0.6)'
+                        color: 'rgba(42, 140, 130, 0.6)'
                     });
                 }
             }
@@ -187,10 +258,10 @@ class UIController {
     showReserveCardSelection(content, state) {
         const player = state.players[state.currentPlayerIndex];
         content.innerHTML = `
-            <p style="color:${player.color}" class="fw-bold">${player.name}</p>
-            <p class="text-dim" style="font-size:0.8rem;margin:6px 0">
-                Choose a reserve card. Higher values = longer game, but more CEO slots.
-            </p>
+            <div class="action-header" style="border-left-color: ${player.color};">
+                <div class="action-header-title">${player.name}</div>
+                <div class="action-header-desc">Choose a reserve card. Higher values mean a longer game but more CEO slots for your org chart.</div>
+            </div>
             <div id="reserve-cards-display" style="display:flex;flex-direction:column;gap:6px;margin-top:8px"></div>
         `;
 
@@ -223,16 +294,40 @@ class UIController {
         const player = state.players[state.currentPlayerIndex];
         const nonCeo = player.ownedCards.filter(c => c.empId !== 'ceo');
 
+        // Calculate available slots
+        const selected = state.selectedCards || [];
+        const selectedManagers = selected.filter(uid => {
+            const card = player.ownedCards.find(c => c.uid === uid);
+            return card && EMPLOYEES[card.empId]?.isManager;
+        });
+        let totalSlots = state.ceoSlots;
+        for (const uid of selectedManagers) {
+            const card = player.ownedCards.find(c => c.uid === uid);
+            if (card) {
+                const emp = EMPLOYEES[card.empId];
+                if (emp?.isManager) totalSlots += emp.slots;
+            }
+        }
+
+        // Instruction box
         content.innerHTML = `
-            <p style="color:${player.color}" class="fw-bold">${player.name}: Build Structure</p>
-            <p class="text-dim" style="font-size:0.8rem;margin:6px 0">
-                Select employees to work this turn. CEO has ${state.ceoSlots} slot(s).
-                Unselected cards go to the beach.
-            </p>
+            <div class="action-header" style="border-left-color: ${player.color};">
+                <div class="action-header-title">${player.name}: Build Org Chart</div>
+            </div>
+            <div class="restructure-instruction">
+                Select employees to work this turn. Your CEO has <strong>${state.ceoSlots}</strong> direct slot(s).
+                Managers create extra slots. Unselected cards go to the beach.
+            </div>
         `;
 
+        // Selection counter
+        const counterDiv = document.createElement('div');
+        counterDiv.className = 'restructure-counter';
+        counterDiv.textContent = `Selected: ${selected.length} / ${totalSlots} slots available`;
+        content.appendChild(counterDiv);
+
         if (nonCeo.length === 0) {
-            content.innerHTML += `<p class="text-dim" style="font-size:0.8rem;margin:8px 0">No employees yet - just the CEO.</p>`;
+            content.innerHTML += `<p class="text-dim" style="font-size:0.8rem;margin:8px 0">No employees yet \u2014 just the CEO.</p>`;
         } else {
             const cardsDiv = document.createElement('div');
             cardsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;max-height:200px;overflow-y:auto';
@@ -245,8 +340,11 @@ class UIController {
                 el.className = `emp-card ${emp.type}`;
                 el.style.cssText = 'width:72px;height:52px;cursor:pointer';
 
-                if (state.selectedCards?.includes(card.uid)) {
-                    el.classList.add('selected');
+                const isSelected = selected.includes(card.uid);
+                if (isSelected) {
+                    el.classList.add('restructure-selected');
+                } else {
+                    el.classList.add('restructure-dimmed');
                 }
 
                 el.innerHTML = `
@@ -296,10 +394,30 @@ class UIController {
         }
 
         const confirmBtn = document.createElement('button');
-        confirmBtn.className = 'action-btn selected';
-        confirmBtn.style.background = 'var(--accent)';
+        confirmBtn.className = 'action-btn';
+        const hasSelection = selected.length > 0 || nonCeo.length === 0;
+        if (hasSelection) {
+            confirmBtn.classList.add('confirm-btn-ready');
+        }
         confirmBtn.textContent = 'Confirm Structure';
-        confirmBtn.onclick = () => this.confirmStructure(state);
+        confirmBtn.onclick = () => {
+            if (selected.length === 0 && nonCeo.length > 0) {
+                // Empty selection warning
+                this.showModal(
+                    'No Employees Selected',
+                    '<p>You have not selected any employees. All employees will go to the beach this turn. Are you sure?</p>',
+                    [
+                        {text: 'Go Back', action: () => this.hideModal()},
+                        {text: 'Confirm Empty', action: () => {
+                            this.hideModal();
+                            this.confirmStructure(state);
+                        }}
+                    ]
+                );
+            } else {
+                this.confirmStructure(state);
+            }
+        };
         actionsDiv.appendChild(confirmBtn);
 
         content.appendChild(actionsDiv);
@@ -376,18 +494,31 @@ class UIController {
         const player = state.players[state.currentPlayerIndex];
         const action = this.engine.getCurrentWorkAction();
 
+        // Header with player name
         const headerDiv = document.createElement('div');
+        headerDiv.className = 'action-header';
+        headerDiv.style.borderLeftColor = player.color;
         headerDiv.innerHTML = `
-            <p style="color:${player.color}" class="fw-bold">${player.name}: Working</p>
-            <p class="text-dim" style="font-size:0.75rem;margin:4px 0">
-                Step ${state.workingStep + 1}/${state.workingActions.length}
-            </p>
+            <div class="action-header-title" style="color:${player.color}">${player.name}: Working</div>
         `;
         content.appendChild(headerDiv);
 
+        // Progress bar
+        const total = state.workingActions.length;
+        const current = state.workingStep + 1;
+        const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'working-progress';
+        progressDiv.innerHTML = `
+            <span>Step ${current}/${total}</span>
+            <div class="working-progress-bar">
+                <div class="working-progress-fill" style="width:${pct}%"></div>
+            </div>
+        `;
+        content.appendChild(progressDiv);
+
         if (!action) {
             content.innerHTML += `<p class="text-dim" style="margin-top:8px">All actions complete. Advancing...</p>`;
-            // Auto-advance
             setTimeout(() => {
                 this.engine.finishPlayerWork();
                 this.updateAll();
@@ -397,7 +528,7 @@ class UIController {
 
         const emp = action.empDef || EMPLOYEES[action.card?.empId];
         const actionDiv = document.createElement('div');
-        actionDiv.style.marginTop = '8px';
+        actionDiv.style.marginTop = '4px';
 
         switch (action.type) {
             case 'ceo_recruit':
@@ -427,8 +558,12 @@ class UIController {
             case 'pricing':
             case 'cfo':
             case 'waitress':
-                // Auto-process these
-                actionDiv.innerHTML = `<p class="text-dim">${emp?.name || action.type}: Auto-applied during Dinnertime</p>`;
+                actionDiv.innerHTML = `
+                    <div class="action-header" style="border-left-color: var(--gold);">
+                        <div class="action-header-title">${emp?.name || action.type}</div>
+                        <div class="action-header-desc">Auto-applied during Dinnertime.</div>
+                    </div>
+                `;
                 setTimeout(() => {
                     this.engine.executeWorkAction({});
                     this.updateAll();
@@ -446,10 +581,12 @@ class UIController {
     }
 
     renderCeoRecruit(container, state, player) {
-        const header = document.createElement('div');
-        header.style.cssText = 'background:rgba(233,69,96,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px';
-        header.innerHTML = '<span class="fw-bold">CEO</span>: Hire 1 entry-level employee';
-        container.appendChild(header);
+        container.innerHTML = `
+            <div class="action-header" style="border-left-color: var(--accent);">
+                <div class="action-header-title">CEO Recruitment</div>
+                <div class="action-header-desc">Your CEO can recruit 1 entry-level employee from the market for free.</div>
+            </div>
+        `;
 
         const options = document.createElement('div');
         options.style.cssText = 'display:flex;flex-direction:column;gap:3px';
@@ -457,8 +594,7 @@ class UIController {
         container.appendChild(options);
 
         const skipBtn = document.createElement('button');
-        skipBtn.className = 'action-btn';
-        skipBtn.style.marginTop = '6px';
+        skipBtn.className = 'skip-btn';
         skipBtn.textContent = 'Skip Hiring';
         skipBtn.onclick = () => {
             this.engine.executeWorkAction({skip: true});
@@ -468,10 +604,12 @@ class UIController {
     }
 
     renderRecruit(container, state, player, emp) {
-        const header = document.createElement('div');
-        header.style.cssText = 'background:rgba(155,93,229,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px';
-        header.innerHTML = `<span class="fw-bold">${emp.name}</span>: Recruit up to ${emp.recruits} employee(s)`;
-        container.appendChild(header);
+        container.innerHTML = `
+            <div class="action-header" style="border-left-color: #7b4daa;">
+                <div class="action-header-title">${emp.name}</div>
+                <div class="action-header-desc">Recruit up to ${emp.recruits} entry-level employee(s) from the market.</div>
+            </div>
+        `;
 
         const options = document.createElement('div');
         options.style.cssText = 'display:flex;flex-direction:column;gap:3px';
@@ -479,8 +617,7 @@ class UIController {
         container.appendChild(options);
 
         const doneBtn = document.createElement('button');
-        doneBtn.className = 'action-btn';
-        doneBtn.style.marginTop = '6px';
+        doneBtn.className = 'skip-btn';
         doneBtn.textContent = 'Done Recruiting';
         doneBtn.onclick = () => {
             this.engine.executeWorkAction({skip: true});
@@ -493,7 +630,7 @@ class UIController {
         const entryLevel = Object.values(EMPLOYEES).filter(e => e.entryLevel && state.employeeSupply[e.id] > 0);
         for (const emp of entryLevel) {
             const btn = document.createElement('button');
-            btn.className = `action-btn`;
+            btn.className = 'action-btn';
             btn.innerHTML = `
                 <span class="fw-bold">${emp.name}</span>
                 <span class="text-dim" style="font-size:0.75rem"> (${state.employeeSupply[emp.id]} left)</span>
@@ -509,8 +646,9 @@ class UIController {
     renderProduce(container, state, player, emp) {
         if (emp.produces.choice) {
             container.innerHTML = `
-                <div style="background:rgba(231,111,81,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">
-                    <span class="fw-bold">${emp.name}</span>: Produce 1 item (choose)
+                <div class="action-header" style="border-left-color: #d45a3a;">
+                    <div class="action-header-title">${emp.name}</div>
+                    <div class="action-header-desc">Choose what to cook: 1 burger or 1 pizza. The food goes to your stock.</div>
                 </div>
             `;
             const btns = document.createElement('div');
@@ -520,6 +658,7 @@ class UIController {
                 const btn = document.createElement('button');
                 btn.className = 'action-btn';
                 btn.style.flex = '1';
+                btn.style.textAlign = 'center';
                 btn.innerHTML = `${FOOD_ICONS[type]} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
                 btn.onclick = () => {
                     this.engine.executeWorkAction({foodType: type});
@@ -538,8 +677,9 @@ class UIController {
     renderBuyDrink(container, state, player, emp) {
         if (emp.anyDrink) {
             container.innerHTML = `
-                <div style="background:rgba(42,157,143,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">
-                    <span class="fw-bold">${emp.name}</span>: Take 1 drink of choice
+                <div class="action-header" style="border-left-color: var(--teal);">
+                    <div class="action-header-title">${emp.name}</div>
+                    <div class="action-header-desc">Take 1 drink of your choice. It goes to your stock for selling at dinnertime.</div>
                 </div>
             `;
             const btns = document.createElement('div');
@@ -549,6 +689,7 @@ class UIController {
                 const btn = document.createElement('button');
                 btn.className = 'action-btn';
                 btn.style.flex = '1';
+                btn.style.textAlign = 'center';
                 btn.innerHTML = `${FOOD_ICONS[type]} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
                 btn.onclick = () => {
                     this.engine.executeWorkAction({drinkType: type});
@@ -565,10 +706,12 @@ class UIController {
     }
 
     renderTrain(container, state, player, emp) {
-        const header = document.createElement('div');
-        header.style.cssText = 'background:rgba(69,123,157,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px';
-        header.innerHTML = `<span class="fw-bold">${emp.name}</span>: ${emp.trainActions} training action(s)`;
-        container.appendChild(header);
+        container.innerHTML = `
+            <div class="action-header" style="border-left-color: #3a6e8c;">
+                <div class="action-header-title">${emp.name}</div>
+                <div class="action-header-desc">${emp.trainActions} training action(s). Upgrade an employee on the beach to a higher rank.</div>
+            </div>
+        `;
 
         const options = document.createElement('div');
         options.style.cssText = 'display:flex;flex-direction:column;gap:3px';
@@ -595,7 +738,7 @@ class UIController {
                     btn.className = 'action-btn';
                     btn.innerHTML = `
                         <span>${fromEmp.name}</span>
-                        <span class="text-gold"> → ${target.name}</span>
+                        <span class="text-gold"> \u2192 ${target.name}</span>
                         ${target.salary > 0 ? `<span class="text-dim" style="font-size:0.7rem"> ($${target.salary}/rd)</span>` : ''}
                     `;
                     btn.onclick = () => {
@@ -608,8 +751,7 @@ class UIController {
         }
 
         const skipBtn = document.createElement('button');
-        skipBtn.className = 'action-btn';
-        skipBtn.style.marginTop = '6px';
+        skipBtn.className = 'skip-btn';
         skipBtn.textContent = 'Skip Training';
         skipBtn.onclick = () => {
             this.engine.executeWorkAction({skip: true});
@@ -620,22 +762,22 @@ class UIController {
 
     renderCampaign(container, state, player, emp) {
         container.innerHTML = `
-            <div style="background:rgba(233,196,106,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">
-                <span class="fw-bold">${emp.name}</span>: Place a campaign
-                <div class="text-dim" style="font-size:0.7rem">Types: ${emp.campaigns.join(', ')} | Range: ${emp.range} | Max duration: ${emp.maxDuration}</div>
+            <div class="action-header" style="border-left-color: #d4940a;">
+                <div class="action-header-title">${emp.name}</div>
+                <div class="action-header-desc">Place a campaign to create demand. Types: ${emp.campaigns.join(', ')} | Range: ${emp.range === 99 ? 'unlimited' : emp.range} | Max duration: ${emp.maxDuration}</div>
             </div>
         `;
 
         // Quick campaign placement
         const productDiv = document.createElement('div');
-        productDiv.innerHTML = '<div style="font-size:0.8rem;margin-bottom:4px">Product to advertise:</div>';
+        productDiv.innerHTML = '<div style="font-size:0.8rem;margin-bottom:4px;color:var(--text-mid)">Product to advertise:</div>';
         const prodBtns = document.createElement('div');
         prodBtns.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px';
 
         for (const type of ['burger', 'pizza', 'beer', 'lemonade', 'soda']) {
             const btn = document.createElement('button');
             btn.className = 'action-btn' + (this._campaignProduct === type ? ' selected' : '');
-            btn.style.cssText = 'flex:1;min-width:60px;text-align:center';
+            btn.style.cssText = 'flex:1;min-width:50px;text-align:center';
             btn.innerHTML = `${FOOD_ICONS[type]}`;
             btn.onclick = () => {
                 this._campaignProduct = type;
@@ -648,7 +790,7 @@ class UIController {
 
         // Campaign type
         const typeDiv = document.createElement('div');
-        typeDiv.innerHTML = '<div style="font-size:0.8rem;margin-bottom:4px">Campaign type:</div>';
+        typeDiv.innerHTML = '<div style="font-size:0.8rem;margin-bottom:4px;color:var(--text-mid)">Campaign type:</div>';
         const typeBtns = document.createElement('div');
         typeBtns.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin-bottom:8px';
 
@@ -666,7 +808,7 @@ class UIController {
         container.appendChild(typeDiv);
 
         const skipBtn = document.createElement('button');
-        skipBtn.className = 'action-btn';
+        skipBtn.className = 'skip-btn';
         skipBtn.textContent = 'Skip Campaign';
         skipBtn.onclick = () => {
             this._campaignProduct = null;
@@ -702,7 +844,6 @@ class UIController {
                     const nc = c + dc;
                     if (nr < 0 || nr >= map.rows || nc < 0 || nc >= map.cols) continue;
                     if (map.grid[nr][nc] === CELL.EMPTY && !map.campaigns.some(cp => cp.row === nr && cp.col === nc)) {
-                        // Score by number of adjacent houses (for billboards) or overall reach
                         let score = 0;
                         if (campaignType === 'billboard') {
                             for (const [hdr, hdc] of dirs) {
@@ -717,10 +858,9 @@ class UIController {
                                 return Math.abs(ht.tileRow - tile.tileRow) <= 1 && Math.abs(ht.tileCol - tile.tileCol) <= 1;
                             }).length;
                         } else {
-                            score = 1; // mailbox/airplane: any empty cell works
+                            score = 1;
                         }
 
-                        // Prefer closer to road
                         const onRoad = dirs.some(([d1, d2]) => {
                             const rr = nr + d1, rc = nc + d2;
                             return rr >= 0 && rr < map.rows && rc >= 0 && rc < map.cols && map.grid[rr][rc] === CELL.ROAD;
@@ -786,33 +926,37 @@ class UIController {
 
     renderPlaceHouse(container, state, player) {
         container.innerHTML = `
-            <div style="background:rgba(244,162,97,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">
-                <span class="fw-bold">New Business Developer</span>
+            <div class="action-header" style="border-left-color: #d4940a;">
+                <div class="action-header-title">New Business Developer</div>
+                <div class="action-header-desc">Place a new house on the board adjacent to a road, or add a garden to an existing house.</div>
             </div>
-            <button class="action-btn" onclick="window.ui.autoPlaceHouse()">Auto-Place House</button>
-            <button class="action-btn" onclick="window.ui.autoPlaceGarden()">Auto-Add Garden</button>
-            <button class="action-btn" onclick="window.ui.skipWorkAction()">Skip</button>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+                <button class="action-btn" onclick="window.ui.autoPlaceHouse()">Auto-Place House</button>
+                <button class="action-btn" onclick="window.ui.autoPlaceGarden()">Auto-Add Garden</button>
+                <button class="skip-btn" onclick="window.ui.skipWorkAction()">Skip</button>
+            </div>
         `;
     }
 
     renderPlaceRestaurant(container, state, player, emp) {
         container.innerHTML = `
-            <div style="background:rgba(244,162,97,0.1);padding:8px;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">
-                <span class="fw-bold">${emp.name}</span>: Place a restaurant
+            <div class="action-header" style="border-left-color: #d4940a;">
+                <div class="action-header-title">${emp.name}</div>
+                <div class="action-header-desc">Place a new restaurant on the board. Click a valid 2x2 location.</div>
             </div>
         `;
 
         if (player.restaurants.length >= player.maxRestaurants) {
             container.innerHTML += '<p class="text-dim">All restaurants placed.</p>';
             const skipBtn = document.createElement('button');
-            skipBtn.className = 'action-btn';
+            skipBtn.className = 'skip-btn';
             skipBtn.textContent = 'Skip';
             skipBtn.onclick = () => this.skipWorkAction();
             container.appendChild(skipBtn);
         } else {
             container.innerHTML += '<p class="text-dim" style="font-size:0.8rem">Click a valid location on the map.</p>';
             const skipBtn = document.createElement('button');
-            skipBtn.className = 'action-btn';
+            skipBtn.className = 'skip-btn';
             skipBtn.textContent = 'Skip';
             skipBtn.onclick = () => this.skipWorkAction();
             container.appendChild(skipBtn);
@@ -826,7 +970,7 @@ class UIController {
                         highlights.push({
                             row: pos.row + dr,
                             col: pos.col + dc,
-                            color: 'rgba(42, 157, 143, 0.4)'
+                            color: 'rgba(42, 140, 130, 0.4)'
                         });
                     }
                 }
@@ -839,7 +983,7 @@ class UIController {
         const sorted = [...state.players].sort((a, b) => b.cash - a.cash);
         content.innerHTML = `
             <div style="text-align:center;padding:20px 0">
-                <h2 style="color:var(--gold);font-size:1.4rem;margin-bottom:12px">GAME OVER</h2>
+                <h2 style="font-family:'Fredoka',sans-serif;color:var(--gold);font-size:1.4rem;margin-bottom:12px">GAME OVER</h2>
                 <div style="font-size:1.2rem;font-weight:700;color:${state.winner?.color}">
                     ${state.winner?.name} Wins!
                 </div>
@@ -847,8 +991,8 @@ class UIController {
                 <div style="margin-top:16px;text-align:left">
                     ${sorted.map((p, i) => `
                         <div style="display:flex;justify-content:space-between;padding:6px 8px;
-                            border-radius:4px;margin-bottom:2px;
-                            ${i === 0 ? 'background:rgba(244,162,97,0.15);' : ''}">
+                            border-radius:6px;margin-bottom:2px;
+                            ${i === 0 ? 'background:rgba(212,148,10,0.1);border:1px solid rgba(212,148,10,0.2);' : ''}">
                             <span style="color:${p.color};font-weight:${i === 0 ? '700' : '400'}">
                                 ${i + 1}. ${p.name}
                             </span>
@@ -883,7 +1027,7 @@ class UIController {
             html += `<div class="org-node ${cls}" title="${emp?.name}\n${emp?.action || 'manager'}">${emp?.name || '?'}</div>`;
         }
         for (let i = subs.length; i < state.ceoSlots; i++) {
-            html += '<div class="org-node empty-slot">-</div>';
+            html += '<div class="org-node empty-slot">\u2014</div>';
         }
         html += '</div>';
 
@@ -900,7 +1044,7 @@ class UIController {
                 html += `<div class="org-node employee">${mEmp?.name || '?'}</div>`;
             }
             for (let i = mgrSubs.length; i < emp.slots; i++) {
-                html += '<div class="org-node empty-slot">-</div>';
+                html += '<div class="org-node empty-slot">\u2014</div>';
             }
             html += '</div>';
         }
@@ -983,7 +1127,7 @@ class UIController {
             `;
 
             if (isBeach && !isCeo) {
-                el.style.opacity = '0.7';
+                el.style.opacity = '0.6';
                 beachCards.appendChild(el);
             } else {
                 handCards.appendChild(el);
@@ -994,7 +1138,7 @@ class UIController {
         const inv = this.formatInventory(player);
         if (inv !== 'none') {
             const invEl = document.createElement('div');
-            invEl.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:12px;border-left:1px solid var(--border);font-size:0.9rem;white-space:nowrap';
+            invEl.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;padding-left:12px;border-left:2px solid var(--border);font-size:0.9rem;white-space:nowrap';
             invEl.innerHTML = inv;
             handCards.appendChild(invEl);
         }
@@ -1021,7 +1165,7 @@ class UIController {
             catDiv.style.marginBottom = '6px';
 
             const label = document.createElement('div');
-            label.style.cssText = 'font-size:0.6rem;color:var(--text-dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px';
+            label.style.cssText = 'font-family:Fredoka,sans-serif;font-size:0.6rem;color:var(--text-dim);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600';
             label.textContent = cat.name;
             catDiv.appendChild(label);
 
@@ -1038,8 +1182,8 @@ class UIController {
                 el.style.position = 'relative';
                 el.style.opacity = supply > 0 ? '1' : '0.3';
                 el.innerHTML = `
-                    <div style="font-size:0.5rem;font-weight:700;line-height:1.1">${emp.name}</div>
-                    <div style="font-size:0.55rem;opacity:0.8">${supply}x</div>
+                    <div style="font-size:0.5rem;font-weight:700;line-height:1.1;color:var(--text)">${emp.name}</div>
+                    <div style="font-size:0.55rem;opacity:0.7;color:var(--text-mid)">${supply}x</div>
                 `;
                 el.title = `${emp.name} (${supply} available)\n${emp.salary > 0 ? `Salary: $${emp.salary}` : 'Free'}\n${emp.action || (emp.isManager ? 'Manager' : '')}`;
                 row.appendChild(el);
@@ -1111,7 +1255,6 @@ class UIController {
         for (let r = 0; r < map.rows; r++) {
             for (let c = 0; c < map.cols; c++) {
                 if (map.grid[r][c] !== CELL.EMPTY) continue;
-                // Check adjacent to road
                 const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
                 const adjRoad = dirs.some(([dr, dc]) => {
                     const nr = r + dr, nc = c + dc;
@@ -1121,7 +1264,7 @@ class UIController {
                     const houseNum = map.houses.length + 1;
                     map.houses.push({
                         row: r, col: c, number: houseNum,
-                        demand: [], garden: true // New houses come with gardens
+                        demand: [], garden: true
                     });
                     map.grid[r][c] = CELL.HOUSE;
                     this.engine.log(`${this.engine.currentPlayer.name}: Placed house #${houseNum} at (${r},${c}) with garden`);
@@ -1142,7 +1285,6 @@ class UIController {
         // Find a house without a garden
         for (const house of map.houses) {
             if (house.garden) continue;
-            // Try to add a 2-cell garden
             const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
             for (const [dr, dc] of dirs) {
                 const nr = house.row + dr;

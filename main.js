@@ -21,9 +21,13 @@
         startGame(true);
     });
 
+    // Hide game log on menu screen
+    document.getElementById('game-log').style.display = 'none';
+
     function startGame(introMode) {
         document.getElementById('main-menu').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
+        document.getElementById('game-log').style.display = '';
 
         engine = new GameEngine();
         window.gameEngine = engine;
@@ -41,6 +45,8 @@
             const log = document.getElementById('game-log');
             log.classList.toggle('collapsed');
             log.classList.toggle('expanded');
+            const toggle = document.getElementById('log-toggle');
+            toggle.textContent = log.classList.contains('expanded') ? 'Game Log \u25BC' : 'Game Log \u25B2';
         });
 
         ui.updateAll();

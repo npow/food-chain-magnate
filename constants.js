@@ -26,6 +26,19 @@ const PHASE_NAMES = {
     [PHASES.GAME_OVER]: 'Game Over'
 };
 
+const PHASE_DESCRIPTIONS = {
+    [PHASES.SETUP_PLACE_RESTAURANT]: 'Place your first restaurant on the board. Choose wisely!',
+    [PHASES.SETUP_RESERVE_CARD]: 'Pick a reserve card to set the game length and your CEO slots.',
+    [PHASES.RESTRUCTURING]: 'Assign employees to your org chart. Unplayed cards go to the beach.',
+    [PHASES.ORDER_OF_BUSINESS]: 'Turn order is set by who played the fewest cards.',
+    [PHASES.WORKING]: 'Employees take actions: recruit, produce food, buy drinks, run campaigns.',
+    [PHASES.DINNERTIME]: 'Houses are served in numerical order. Cheapest total price wins!',
+    [PHASES.PAYDAY]: 'Pay salaries to all your trained employees.',
+    [PHASES.MARKETING_CAMPAIGNS]: 'Active campaigns place demand tokens on nearby houses.',
+    [PHASES.CLEANUP]: 'Discard unsold food, tick down campaign timers, check bank reserve.',
+    [PHASES.GAME_OVER]: 'The bank has run out! Final scores are tallied.'
+};
+
 const FOOD_TYPES = {
     BURGER: 'burger',
     PIZZA: 'pizza',
@@ -49,7 +62,7 @@ const CAMPAIGN_TYPES = {
     RADIO: 'radio'
 };
 
-const PLAYER_COLORS = ['#e63946', '#457b9d', '#2a9d8f', '#f4a261', '#9b5de5'];
+const PLAYER_COLORS = ['#c41e3a', '#3a6e8c', '#2a7a5a', '#d4940a', '#7b4daa'];
 const PLAYER_NAMES = ['Red Corp', 'Blue Inc', 'Green Ltd', 'Gold Co', 'Purple LLC'];
 
 // Employee definitions
