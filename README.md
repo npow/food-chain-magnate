@@ -1,5 +1,7 @@
 # Food Chain Magnate — Digital Edition
 
+[![Docs](https://img.shields.io/badge/docs-mintlify-18a34a?style=flat-square)](https://mintlify.com/npow/food-chain-magnate)
+
 A browser-based digital adaptation of the board game *Food Chain Magnate* by Splotter Spellen, featuring a warm 1950s retro diner aesthetic.
 
 ![Game Board](screenshots/gameplay.png)
