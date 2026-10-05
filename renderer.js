@@ -145,16 +145,57 @@ class BoardRenderer {
                 ctx.strokeStyle = '#d4c040';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([6, 4]);
-                if (this.hasAdjacentRoad(map, r, c, 0, 1) || this.hasAdjacentRoad(map, r, c, 0, -1)) {
+                let adjRoadCount = 0;
+                if (this.hasAdjacentRoad(map, r, c, -1, 0)) {
                     ctx.beginPath();
                     ctx.moveTo(x + cs / 2, y + 3);
+                    ctx.lineTo(x + cs / 2, y + cs/2);
+                    ctx.stroke();
+                  adjRoadCount += 1;
+                }
+                if (this.hasAdjacentRoad(map, r, c, 0, -1)) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + 3, y + cs / 2);
+                    ctx.lineTo(x + cs/2, y + cs / 2);
+                    ctx.stroke();
+                adjRoadCount += 2;
+                }
+                if (this.hasAdjacentRoad(map, r, c, 1, 0)) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs / 2, y + cs/2);
+                    ctx.lineTo(x + cs / 2, y + cs - 3);
+                    ctx.stroke();
+                adjRoadCount += 4;
+                }
+                if (this.hasAdjacentRoad(map, r, c, 0, 1)) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs/2, y + cs / 2);
+                    ctx.lineTo(x + cs - 3, y + cs / 2);
+                    ctx.stroke();
+                adjRoadCount += 8;
+                }
+                if (adjRoadCount == 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs / 2, y + cs/2);
                     ctx.lineTo(x + cs / 2, y + cs - 3);
                     ctx.stroke();
                 }
-                if (this.hasAdjacentRoad(map, r, c, 1, 0) || this.hasAdjacentRoad(map, r, c, -1, 0)) {
+                if (adjRoadCount == 2) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs/2, y + cs / 2);
+                    ctx.lineTo(x + cs - 3, y + cs / 2);
+                    ctx.stroke();
+                }
+                if (adjRoadCount == 4) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cs / 2, y + 3);
+                    ctx.lineTo(x + cs / 2, y + cs/2);
+                    ctx.stroke();
+                }
+                if (adjRoadCount == 8) {
                     ctx.beginPath();
                     ctx.moveTo(x + 3, y + cs / 2);
-                    ctx.lineTo(x + cs - 3, y + cs / 2);
+                    ctx.lineTo(x + cs/2, y + cs / 2);
                     ctx.stroke();
                 }
                 ctx.setLineDash([]);
