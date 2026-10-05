@@ -10,6 +10,29 @@ class BoardRenderer {
         this.hoveredCell = null;
         this.highlights = [];
         this.selectedCell = null;
+        this.lastState = null;
+        this.brandMarks = PLAYER_BRAND_ASSETS.map(src => {
+            const image = new Image();
+            image.onload = () => {
+                if (this.lastState) this.render(this.lastState);
+            };
+            image.src = src;
+            return image;
+        });
+        this.componentImages = {};
+        for (const [name, src] of Object.entries({
+            houseTile: 'assets/house-tile.png',
+            soda: 'assets/drink-soda.png',
+            beer: 'assets/drink-beer.png',
+            lemonade: 'assets/drink-lemonade.png'
+        })) {
+            const image = new Image();
+            image.onload = () => {
+                if (this.lastState) this.render(this.lastState);
+            };
+            image.src = src;
+            this.componentImages[name] = image;
+        }
     }
 
     resize(map) {
@@ -21,6 +44,7 @@ class BoardRenderer {
 
     render(state) {
         if (!state || !state.map) return;
+        this.lastState = state;
 
         const map = state.map;
         const ctx = this.ctx;
@@ -184,98 +208,55 @@ class BoardRenderer {
     }
 
     drawHouse(ctx, x, y, cs, house) {
-        // Shadow
-        ctx.fillStyle = 'rgba(0,0,0,0.1)';
-        const hw = cs * 0.75;
-        const hh = cs * 0.55;
-        const hx = x + (cs - hw) / 2;
-        const hy = y + cs - hh - 3;
-        ctx.fillRect(hx + 2, hy + 2, hw, hh);
-
-        // House body — cream walls
-        ctx.fillStyle = '#f5e6c8';
-        ctx.fillRect(hx, hy, hw, hh);
-
-        // Roof — red
-        ctx.fillStyle = '#b83028';
-        ctx.beginPath();
-        ctx.moveTo(hx - 3, hy);
-        ctx.lineTo(hx + hw / 2, hy - 12);
-        ctx.lineTo(hx + hw + 3, hy);
-        ctx.closePath();
-        ctx.fill();
-
-        // Door — brown
-        ctx.fillStyle = '#6d4530';
-        const doorW = 5;
-        const doorH = hh * 0.45;
-        ctx.fillRect(hx + hw / 2 - doorW / 2, hy + hh - doorH, doorW, doorH);
-
-        // Windows — blue with pane lines
-        ctx.fillStyle = '#7ec8d8';
-        const winSize = 7;
-        // Left window
-        ctx.fillRect(hx + 4, hy + 5, winSize, winSize);
-        // Right window
-        ctx.fillRect(hx + hw - winSize - 4, hy + 5, winSize, winSize);
-        // Window panes
-        ctx.strokeStyle = '#5a9aa8';
-        ctx.lineWidth = 0.5;
-        // Left panes
-        ctx.beginPath();
-        ctx.moveTo(hx + 4 + winSize / 2, hy + 5);
-        ctx.lineTo(hx + 4 + winSize / 2, hy + 5 + winSize);
-        ctx.moveTo(hx + 4, hy + 5 + winSize / 2);
-        ctx.lineTo(hx + 4 + winSize, hy + 5 + winSize / 2);
-        ctx.stroke();
-        // Right panes
-        ctx.beginPath();
-        ctx.moveTo(hx + hw - winSize / 2 - 4, hy + 5);
-        ctx.lineTo(hx + hw - winSize / 2 - 4, hy + 5 + winSize);
-        ctx.moveTo(hx + hw - winSize - 4, hy + 5 + winSize / 2);
-        ctx.lineTo(hx + hw - 4, hy + 5 + winSize / 2);
-        ctx.stroke();
-
-        // House number badge — red circle at top
-        ctx.fillStyle = '#c41e3a';
-        ctx.beginPath();
-        ctx.arc(x + cs / 2, y + 8, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 8px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(house.number, x + cs / 2, y + 8);
-
-        // Garden indicator — green bar with yellow flower dots
-        if (house.garden) {
-            ctx.fillStyle = '#5a9848';
-            ctx.fillRect(x + 2, y + cs - 5, cs - 4, 4);
-            // Flower dots
-            ctx.fillStyle = '#e8d040';
-            for (let i = 0; i < 4; i++) {
-                ctx.fillRect(x + 6 + i * 10, y + cs - 4, 2, 2);
-            }
+        // Render the actual numbered house piece at its original portrait ratio.
+        const tileImage = this.componentImages.houseTile;
+        const tileHeight = cs - 2;
+        const tileWidth = tileImage?.naturalWidth && tileImage?.naturalHeight
+            ? tileHeight * tileImage.naturalWidth / tileImage.naturalHeight
+            : tileHeight * 0.64;
+        const tileX = x + (cs - tileWidth) / 2;
+        const tileY = y + 1;
+        if (tileImage?.complete && tileImage.naturalWidth > 0) {
+            ctx.drawImage(tileImage, tileX, tileY, tileWidth, tileHeight);
+        } else {
+            ctx.fillStyle = '#79264a';
+            ctx.fillRect(tileX, tileY, tileWidth, tileHeight);
         }
 
-        // Demand tokens — larger with initial letters
-        if (house.demand.length > 0) {
-            const tokenSize = 9;
-            const startX = x + 2;
-            const startY = y + 17;
+        // Houses without a garden keep the printed yard area but omit the gate.
+        if (!house.garden) {
+            ctx.fillStyle = '#95b75e';
+            ctx.fillRect(tileX + 1, tileY + tileHeight * 0.68, tileWidth - 2, tileHeight * 0.3);
+        }
+
+        // Replace the sample tile's printed "1" with this house's number.
+        const numberX = tileX + tileWidth * 0.82;
+        const numberY = tileY + 7;
+        ctx.fillStyle = '#79264a';
+        ctx.fillRect(tileX + tileWidth * 0.68, tileY + 1, tileWidth * 0.28, 11);
+        ctx.fillStyle = '#fff4d8';
+        ctx.font = 'bold 8px Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(house.number, numberX, numberY);
+
+        // Small demand markers sit over the artwork like tokens on the tile.
+        if (house.demand?.length > 0) {
+            const tokenSize = 8;
+            const startX = x + 4;
+            const startY = y + cs - 15;
             house.demand.forEach((d, i) => {
                 const tx = startX + (i % 3) * (tokenSize + 2);
-                const ty = startY + Math.floor(i / 3) * (tokenSize + 2);
+                const ty = startY - Math.floor(i / 3) * (tokenSize + 2);
                 ctx.fillStyle = this.getDemandColor(d);
                 ctx.beginPath();
                 ctx.arc(tx + tokenSize / 2, ty + tokenSize / 2, tokenSize / 2, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                ctx.lineWidth = 0.5;
+                ctx.strokeStyle = '#fff4d8';
+                ctx.lineWidth = 1;
                 ctx.stroke();
-                // Initial letter
                 ctx.fillStyle = d === 'soda' ? '#fff' : '#2c1810';
-                ctx.font = 'bold 6px Inter, sans-serif';
+                ctx.font = 'bold 5px Inter, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 const initials = { burger: 'B', pizza: 'P', beer: 'B', lemonade: 'L', soda: 'S' };
@@ -297,27 +278,36 @@ class BoardRenderer {
 
     drawDrinkSource(ctx, x, y, cs, cellType) {
         const info = {
-            [CELL.DRINK_BEER]: { fill: '#c4a840', label: 'BEER' },
-            [CELL.DRINK_LEMON]: { fill: '#6ab8a0', label: 'LEM' },
-            [CELL.DRINK_SODA]: { fill: '#3a6e8c', label: 'SODA' }
+            [CELL.DRINK_BEER]: { key: 'beer', fill: '#174d3d', label: 'BEER' },
+            [CELL.DRINK_LEMON]: { key: 'lemonade', fill: '#e6ad16', label: 'LEM' },
+            [CELL.DRINK_SODA]: { key: 'soda', fill: '#ae2028', label: 'SODA' }
         }[cellType];
 
-        // Larger circle
+        // Drink locations use the game's original wooden token silhouettes.
         const radius = cs / 2 - 3;
-        ctx.fillStyle = info.fill;
+        ctx.fillStyle = '#fff5dc';
         ctx.beginPath();
         ctx.arc(x + cs / 2, y + cs / 2, radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = info.fill;
+        ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Full label
-        ctx.fillStyle = cellType === CELL.DRINK_SODA ? '#fff' : '#2c1810';
-        ctx.font = 'bold 11px Inter, sans-serif';
+        const token = this.componentImages[info.key];
+        if (token?.complete && token.naturalWidth > 0) {
+            const maxW = 18;
+            const maxH = 25;
+            const scale = Math.min(maxW / token.naturalWidth, maxH / token.naturalHeight);
+            const drawW = token.naturalWidth * scale;
+            const drawH = token.naturalHeight * scale;
+            ctx.drawImage(token, x + (cs - drawW) / 2, y + 2, drawW, drawH);
+        }
+
+        ctx.fillStyle = '#38271c';
+        ctx.font = 'bold 6px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(info.label, x + cs / 2, y + cs / 2);
+        ctx.fillText(info.label, x + cs / 2, y + cs - 6);
     }
 
     drawRestaurant(ctx, rest, state) {
@@ -349,27 +339,34 @@ class BoardRenderer {
         ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
 
         // Name plate
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.15;
-        ctx.fillRect(x + 6, y + awningH + 6, w - 12, 16);
-        ctx.globalAlpha = 1;
-
-        // Name text
-        ctx.fillStyle = color;
-        ctx.font = 'bold 11px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(state.players[rest.owner].name.split(' ')[0], x + w / 2, y + awningH + 14);
+        const signY = y + awningH + 7;
+        const signW = w - 24;
+        const signH = 54;
+        const signLeft = x + (w - signW) / 2;
+        ctx.fillStyle = '#fff8ec';
+        ctx.fillRect(signLeft, signY, signW, signH);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(signLeft, signY, signW, signH);
+        const brand = this.brandMarks[rest.owner];
+        if (brand?.complete && brand.naturalWidth > 0) {
+            const scale = Math.min((signW - 6) / brand.naturalWidth, (signH - 6) / brand.naturalHeight);
+            const imageW = brand.naturalWidth * scale;
+            const imageH = brand.naturalHeight * scale;
+            ctx.drawImage(brand, x + (w - imageW) / 2, signY + (signH - imageH) / 2, imageW, imageH);
+        }
 
         // Status text
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         if (rest.open) {
             ctx.fillStyle = '#2a7a5a';
             ctx.font = 'bold 9px Inter, sans-serif';
-            ctx.fillText('OPEN', x + w / 2, y + awningH + 30);
+            ctx.fillText('OPEN', x + w / 2, y + h - 9);
         } else {
             ctx.fillStyle = '#c41e3a';
             ctx.font = 'bold 8px Inter, sans-serif';
-            ctx.fillText('COMING SOON', x + w / 2, y + awningH + 30);
+            ctx.fillText('COMING SOON', x + w / 2, y + h - 9);
         }
 
         // Entrance marker — colored circle with "E"
