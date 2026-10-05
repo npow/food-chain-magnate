@@ -101,9 +101,15 @@ class UIController {
             const p = state.players[idx];
             const marker = document.createElement('div');
             marker.className = 'turn-marker' + (idx === state.currentPlayerIndex ? ' current' : '');
-            marker.style.background = p.color;
-            marker.textContent = idx + 1;
             marker.title = p.name;
+            const logo = document.createElement('img');
+            logo.src = PLAYER_BRAND_ASSETS[idx];
+            logo.alt = p.name;
+            marker.appendChild(logo);
+            const number = document.createElement('span');
+            number.className = 'turn-marker-number';
+            number.textContent = idx + 1;
+            marker.appendChild(number);
             tod.appendChild(marker);
         }
     }
@@ -123,7 +129,10 @@ class UIController {
             const totalSalary = player.ownedCards.reduce((sum, c) => sum + (EMPLOYEES[c.empId]?.salary || 0), 0);
 
             card.innerHTML = `
-                <div class="player-name" style="color:${player.color}">${player.name}</div>
+                <div class="player-name-row">
+                    <img class="player-brand-mark" src="${PLAYER_BRAND_ASSETS[player.id]}" alt="">
+                    <div class="player-name" style="color:${player.color}">${player.name}</div>
+                </div>
                 <div class="player-cash">$${player.cash}</div>
                 <div class="player-stats">
                     Employees: ${player.ownedCards.length - 1} | Rests: ${player.restaurants.length}/3
@@ -182,6 +191,7 @@ class UIController {
                 break;
             case PHASES.SETUP_RESERVE_CARD:
                 this.showReserveCardSelection(content, state);
+                this.renderer.clearHighlights();
                 break;
             case PHASES.RESTRUCTURING:
                 this.showRestructuring(content, state);

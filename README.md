@@ -2,7 +2,7 @@
 
 [![Docs](https://img.shields.io/badge/docs-mintlify-18a34a?style=flat-square)](https://mintlify.com/npow/food-chain-magnate)
 
-A browser-based digital adaptation of the board game *Food Chain Magnate* by Splotter Spellen, featuring a warm 1950s retro diner aesthetic.
+A browser-based digital adaptation of the board game *Food Chain Magnate* by Splotter Spellen, featuring original Splotter box and restaurant artwork from the official rules.
 
 ![Game Board](screenshots/gameplay.png)
 
@@ -22,6 +22,7 @@ No build step required — pure HTML, CSS, and JavaScript.
 - **Procedurally generated maps** from 20 tile templates with road connectivity
 - **Full economic loop** — production, marketing, demand, sales, salaries
 - **Introductory variant** for learning the game (no milestones, simplified bank)
+- **Original game artwork** — Splotter masthead, box cover, and restaurant brands
 - **Retro diner theme** — warm cream/red/teal palette with Fredoka display font
 - **Clear gameplay flow** — current player banner, phase descriptions, transition overlays, progress bars
 
@@ -71,6 +72,7 @@ renderer.js     — Canvas board renderer (48px cells, warm visuals)
 ui.js           — Interactive UI with phase overlays and progress tracking
 main.js         — Entry point, menu, and board interaction
 screenshots/    — Game screenshots
+assets/         — Official Food Chain Magnate artwork and restaurant logos
 ```
 
 ## Credits

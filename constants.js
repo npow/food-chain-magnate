@@ -62,8 +62,21 @@ const CAMPAIGN_TYPES = {
     RADIO: 'radio'
 };
 
-const PLAYER_COLORS = ['#c41e3a', '#3a6e8c', '#2a7a5a', '#d4940a', '#7b4daa'];
-const PLAYER_NAMES = ['Red Corp', 'Blue Inc', 'Green Ltd', 'Gold Co', 'Purple LLC'];
+const PLAYER_COLORS = ['#b65b91', '#49aeb8', '#d7797b', '#79a94d', '#bd2939'];
+const PLAYER_NAMES = [
+    'Fried & Donkey',
+    'Golden Duck Diner',
+    'Santa Maria Pizza',
+    'Xango Blues Bar',
+    'Gluttony Burgers'
+];
+const PLAYER_BRAND_ASSETS = [
+    'assets/restaurant-fried-and-donkey.png',
+    'assets/restaurant-golden-duck-diner.png',
+    'assets/restaurant-santa-maria-pizza.png',
+    'assets/restaurant-xango-blues-bar.png',
+    'assets/restaurant-gluttony-burgers.png'
+];
 
 // Employee definitions
 const EMPLOYEES = {
